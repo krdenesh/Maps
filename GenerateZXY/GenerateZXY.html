@@ -1,0 +1,614 @@
+<html>
+    <head>
+       <title>Tiley</title>
+       <meta charset="utf-8">
+       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+       <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+
+       <!-- Latest compiled and minified CSS -->
+      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
+      <!-- Optional theme -->
+      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+
+    </head>
+    <style>
+        #map { height: 100%; width:75%; float:left; }
+        #right_panel { float:right; width: 25%; }
+        #tileURLs { padding: 20px;}
+        #btnCSV, #btnClear { display:none;}
+        #messages { display:none; padding: 15px; border: 1px solid #ff0000; color: #ff0000;}
+        .controls div, .controls button {margin: 15px 0;}
+    </style>
+    <body>
+        <div id="map"></div>
+        <div id="right_panel" class="panel panel-default">
+          <div class="panel-heading">
+            <h3 class="panel-title">Choose Map Area - Find Children Tiles</h3>
+          </div>
+          <div class="panel-body">
+             Push 'Start' button to generate a list of SubTiles for the current viewport.
+             <div class="controls">
+                  <button id="btnStart" type="button" class="btn btn-default">Start</button>
+
+
+                <div class="input-group">
+                    <span class="input-group-addon" id="basic-addon1">Current Tile Depth</span>
+                    <input id="currentTileDepth" disabled="disabled" type="text" class="form-control" placeholder="Tile Depth (zoom level)" aria-describedby="basic-addon1">
+                </div>
+
+                <div class="input-group">
+                    <span class="input-group-addon" id="basic-addon1">Max Tile Depth</span>
+                    <input id="maxTileDepth" = type="text" class="form-control" placeholder="Tile Depth (zoom level)" aria-describedby="basic-addon1">
+                </div>
+
+                <div id="messages"></div>
+
+
+                <button id="btnCSV" type="button" class="btn btn-default">Download CSV</button>
+
+                <button id="btnClear" type="button" class="btn btn-default">Clear Map</button>
+
+
+             </div>
+             <div id="tileURLs">
+
+             </div>
+          </div>
+
+
+          <!-- 2nd Panel -->
+          <div class="panel-heading">
+            <h3 class="panel-title">Choose Map Area - Find Parent Tiles</h3>
+          </div>
+          <div class="panel-body">
+             Push 'Start' button to generate a list of parent for the current viewport.
+             <div class="controls">
+                  <button id="btnStart_parent" type="button" class="btn btn-default">Start</button>
+
+
+                <div class="input-group">
+                    <span class="input-group-addon" id="basic-addon1_parent">Current Tile Depth</span>
+                    <input id="currentTileDepth" disabled="disabled" type="text" class="form-control" placeholder="Tile Depth (zoom level)" aria-describedby="basic-addon1">
+                </div>
+
+                <div class="input-group">
+                    <span class="input-group-addon" id="basic-addon1_parent-m">Min Tile Depth</span>
+                    <input id="minTileDepth" = type="text" class="form-control" placeholder="Tile Height (zoom level)" aria-describedby="basic-addon1">
+                </div>
+
+                <div id="messages_parent"></div>
+
+
+                <button id="btnCSV_parent" type="button" class="btn btn-default">Download CSV</button>
+
+                <button id="btnClear_parent" type="button" class="btn btn-default">Clear Map</button>
+
+
+             </div>
+             <div id="tileURLs_parent">
+
+             </div>
+          </div>
+
+
+
+
+        </div>
+    </body>
+    <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+    
+    <script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+
+    <script>
+        var map = L.map('map').setView([48, -122], 13);
+        var _selectionTool =  false;
+        var _maxTileDepth = 16; //By Default
+        var _minTiledepth = 0; //By Default
+        var _addresses = [];
+        var _geoJSONLayer;
+
+        // var layerStrings = [];
+        // layerStrings.push("/tile/d/mode=named%7Cfrom=tableau5_2_base/mode=named%7Cfrom=tableau5_2_water/ol/{zxy}.png?apikey=tabmapbeta&size=256");
+        // layerStrings.push("/tile/d/mode=named%7Cfrom=tableau5_2_base/mode=named%7Cfrom=tableau5_2_water/ol/{zxy}.png?apikey=tabmapbeta&size=431");
+        
+        // layerStrings.push("/tile/d/mode=named%7Cfrom=tableau5_2_base/mode=named%7Cfrom=tableau5_2_water/mode=named%7Cfrom=tableau5_2_landcover/mode=named%7Cfrom=tableau5_2_water/ol/{zxy}.png?apikey=tabmapbeta&size=431");
+        // layerStrings.push("/tile/d/mode=named%7Cfrom=tableau5_2_base/mode=named%7Cfrom=tableau5_2_water/mode=named%7Cfrom=tableau5_2_landcover/mode=named%7Cfrom=tableau5_2_water/ol/{zxy}.png?apikey=tabmapbeta&size=256");
+        
+        // layerStrings.push("/tile/d/mode=named%7Cfrom=tableau5_2_base/mode=named%7Cfrom=tableau5_2_water/mode=named%7Cfrom=tableau5_2_landcover/mode=named%7Cfrom=tableau5_2_water/mode=named%7Cfrom=tableau5_2_coastline/ol/{zxy}.png?apikey=tabmapbeta&size=431");
+        // layerStrings.push("/tile/d/mode=named%7Cfrom=tableau5_2_base/mode=named%7Cfrom=tableau5_2_water/mode=named%7Cfrom=tableau5_2_landcover/mode=named%7Cfrom=tableau5_2_water/mode=named%7Cfrom=tableau5_2_coastline/ol/{zxy}.png?apikey=tabmapbeta&size=256");
+        
+        // layerStrings.push("/tile/d/mode=named%7Cfrom=tableau5_2_base/mode=named%7Cfrom=tableau5_2_water/mode=named%7Cfrom=tableau5_2_landcover/mode=named%7Cfrom=tableau5_2_water/mode=named%7Cfrom=tableau5_2_coastline/mode=named%7Copacity=.7%7Cfrom=tableau5_2_admin0_borders/mode=named%7Copacity=.7%7Cfrom=tableau5_2_admin0_labels/mode=named%7Cfrom=tableau5_2_admin0_borders/mode=named%7Cfrom=tableau5_2_admin0_labels/ol/{zxy}.png?apikey=tabmapbeta&size=431");
+        // layerStrings.push("/tile/d/mode=named%7Cfrom=tableau5_2_base/mode=named%7Cfrom=tableau5_2_water/mode=named%7Cfrom=tableau5_2_landcover/mode=named%7Cfrom=tableau5_2_water/mode=named%7Cfrom=tableau5_2_coastline/mode=named%7Copacity=.7%7Cfrom=tableau5_2_admin0_borders/mode=named%7Copacity=.7%7Cfrom=tableau5_2_admin0_labels/mode=named%7Cfrom=tableau5_2_admin0_borders/mode=named%7Cfrom=tableau5_2_admin0_labels/ol/{zxy}.png?apikey=tabmapbeta&size=256");
+
+        // layerStrings.push("/tile/d/mode=named%7Cfrom=tableau5_2_base/mode=named%7Cfrom=tableau5_2_water/mode=named%7Cfrom=tableau5_2_landcover/mode=named%7Cfrom=tableau5_2_water/mode=named%7Cfrom=tableau5_2_coastline/mode=named%7Copacity=.7%7Cfrom=tableau5_2_admin0_borders/mode=named%7Copacity=.7%7Cfrom=tableau5_2_admin0_labels/mode=named%7Cfrom=tableau5_2_admin0_borders/mode=named%7Cfrom=tableau5_2_admin0_labels/mode=named%7Copacity=.7%7Cfrom=tableau5_2_admin1_borders/mode=named%7Cfrom=tableau5_2_admin1_borders/ol/{zxy}.png?apikey=tabmapbeta&size=431")
+
+        //  layerStrings.push("/tile/d/mode=named%7Cfrom=tableau5_2_base/mode=named%7Cfrom=tableau5_2_water/mode=named%7Cfrom=tableau5_2_landcover/mode=named%7Cfrom=tableau5_2_water/mode=named%7Cfrom=tableau5_2_coastline/mode=named%7Copacity=.7%7Cfrom=tableau5_2_admin0_borders/mode=named%7Copacity=.7%7Cfrom=tableau5_2_admin0_labels/mode=named%7Cfrom=tableau5_2_admin0_borders/mode=named%7Cfrom=tableau5_2_admin0_labels/mode=named%7Copacity=.7%7Cfrom=tableau5_2_admin1_borders/mode=named%7Cfrom=tableau5_2_admin1_borders/ol/{zxy}.png?apikey=tabmapbeta&size=431")
+
+
+        //Initialize Text Input
+        $("#maxTileDepth").val(_maxTileDepth);
+        $("#currentTileDepth").val(map._zoom);
+
+
+        L.tileLayer('http://a.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+         L.DomEvent.addListener(L.DomUtil.get("btnCSV"), "click", function(e){
+              getCSV();
+         });
+
+         L.DomEvent.addListener(L.DomUtil.get("btnClear"), "click", function(e){
+              if(_geoJSONLayer){
+                map.removeLayer(_geoJSONLayer);
+              }
+         });
+
+
+        //Wire up 'child' start button
+        L.DomEvent.addListener(L.DomUtil.get("btnStart"), "click", function(e){
+
+              //Clear previous addresses
+              _addresses = [];
+
+              //Clear GeoJSON layer
+              if(_geoJSONLayer){
+                map.removeLayer(_geoJSONLayer);
+              }
+
+              //Hide messages
+              $("#messages").hide();
+              
+              _maxTileDepth = $("#maxTileDepth").val();
+              parseInt($("#maxTileDepth").val()) == "NaN" ? (_maxTileDepth = 14) : (_maxTileDepth = parseInt($("#maxTileDepth").val()))
+              if(_maxTileDepth > 16) {
+                _maxTileDepth = 16;
+                $("#messages").html("Max tile depth can't exceed 16.  Setting to 16.");
+                $("#messages").show();
+              }
+
+              //Set max tile depth
+              $("#maxTileDepth").val(_maxTileDepth);
+
+              //Check for consistency
+              if(_maxTileDepth <= map._zoom) {
+                $("#messages").html("Max tile depth must be greater than current zoom.");
+                $("#messages").show();
+                return;
+              }
+
+              // Find the tiles that touch the drawn rectangle
+              var bounds = getCurrentTileBounds(map);
+
+              //Generate list of tiles currently in the viewpane
+              var visible_list = [];
+              var x_min,x_max,y_min,y_max;
+              x_min = bounds.min.x;
+              x_max = bounds.max.x;
+              y_min = bounds.min.y;
+              y_max= bounds.max.y;
+
+              //Will hold the master list of all subTiles
+              
+
+              for (var x=x_min; x<= x_max; x++){
+                 for(var y=y_min; y<= y_max; y++){
+                    
+                    //Add currently viewable tile addresses
+                    _addresses.push([map._zoom, x, y]);
+
+                    //Grab sub-tiles for each tile in this list
+                    _addresses = _addresses.concat(getChildAddresses(map._zoom, x, y));
+
+                 }
+              }
+
+              //Clear output panel
+              $('#tileURLs').html("<div>Total Tiles: " + _addresses.length + "</div>");
+
+              //Sort tile addresses
+              // _addresses.sort(function(a, b){
+              //     return a[0] - b[0];
+              // });
+              var data = [];
+
+              //Write 'em out
+              _addresses.forEach(function(item){
+                  $('#tileURLs').append("<div class='tileRow'>" + item.join("/") + "</div>");
+
+                  //Only create GeoJSON for the maxTileDepth layer
+                  if(item[0] == _maxTileDepth){
+                     var boundsObj =  GetZXYBounds(item[0], item[1], item[2]);
+                     if(boundsObj && boundsObj.bounds){
+                        data.push({ zxy: boundsObj.bounds });
+                     } 
+                  }
+  
+              })
+
+              //Grab data object.
+              var geoJSON = geoJSONFormatter(data, ["zxy"]);
+
+              
+
+              //Add to map
+              if(geoJSON){
+                _geoJSONLayer = L.geoJson(geoJSON).addTo(map);
+              }
+
+              //Show CSV button
+              $("#btnCSV").show();
+              $("#btnClear").show();
+
+        });
+
+        map.on("moveend", function(){
+              $("#currentTileDepth").val(map._zoom);
+        });
+
+
+
+        //wire up the parent start button click
+        L.DomEvent.addListener(L.DomUtil.get("btnStart_parent"), "click", function(e){
+
+              //Clear previous addresses
+              _addresses = [];
+
+              //Clear GeoJSON layer
+              if(_geoJSONLayer){
+                map.removeLayer(_geoJSONLayer);
+              }
+
+              //Hide messages
+              $("#messages_parent").hide();
+              
+              _minTileDepth = $("#minTileDepth").val();
+              isNaN(parseInt($("#minTileDepth").val())) ? (_minTileDepth = 0) : (_minTileDepth = parseInt($("#minTileDepth").val()))
+              if(_minTileDepth < 0) {
+                _minTileDepth = 0;
+                $("#messages_parent").html("Min tile depth can't exceed 0.  Setting to 0.");
+                $("#messages_parent").show();
+              }
+
+              //Set max tile depth
+              $("#minTileDepth").val(_minTileDepth);
+
+              //Check for consistency
+              if(_minTileDepth >= map._zoom) {
+                $("#messages_parent").html("Min tile depth must be less than current zoom.");
+                $("#messages_parent").show();
+                return;
+              }
+
+              // Find the tiles that touch the drawn rectangle
+              var bounds = getCurrentTileBounds(map);
+
+              //Generate list of tiles currently in the viewpane
+              var visible_list = [];
+              var x_min,x_max,y_min,y_max;
+              x_min = bounds.min.x;
+              x_max = bounds.max.x;
+              y_min = bounds.min.y;
+              y_max= bounds.max.y;
+
+              //_addresses Will hold the master list of all parent tiles
+              for (var x=x_min; x<= x_max; x++){
+                 for(var y=y_min; y<= y_max; y++){
+                    
+                    //Add currently viewable tile addresses
+                    _addresses.push([map._zoom, x, y]);
+
+                    //Grab sub-tiles for each tile in this list
+                    _addresses = _addresses.concat(getParentAddresses(map._zoom, x, y));
+
+                 }
+              }
+
+
+              //Sort tile addresses
+              // _addresses.sort(function(a, b){
+              //     return a[0] - b[0];
+              // });
+              var data = [];
+              var uniqueDict = {}; //Keep an object to keep track of unique keys.
+
+             _addresses.forEach(function(item){
+                  uniqueDict[item[0] + "/" + item[1] + "/" + item[2]] = [item[0], item[1], item[2]];
+             });
+
+              //Clear output panel
+              $('#tileURLs_parent').html("<div>Total Tiles: " + Object.keys(uniqueDict).length + "</div>");
+
+
+              //Write 'em out
+              Object.keys(uniqueDict).forEach(function(item){
+
+                var row = uniqueDict[item];
+
+
+                  $('#tileURLs_parent').append("<div class='tileRow'>" + row.join("/") + "</div>");
+
+                  //Only create GeoJSON for the maxTileDepth layer
+                  //if(row[0] == _minTileDepth){
+                     var boundsObj =  GetZXYBounds(row[0], row[1], row[2]);
+                     if(boundsObj && boundsObj.bounds){
+                        data.push({ zxy: boundsObj.bounds });
+                     } 
+                  //}
+  
+              })
+
+
+
+              //Grab data object.
+              var geoJSON = geoJSONFormatter(data, ["zxy"]);
+
+              var hollowStyle = {
+                    fillColor: "#ffffff",
+                    color: "#000000",
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0
+              };
+
+              //Add to map
+              if(geoJSON){
+                _geoJSONLayer = L.geoJson(geoJSON, hollowStyle).addTo(map);
+              }
+
+              //Show CSV button
+              //$("#btnCSV").show();
+              //$("#btnClear").show();
+
+        });
+
+
+        //From http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames#Subtiles
+        //If you're looking at tile x,y and want to zoom in, the subtiles are (in the next zoom-level's coordinate system):
+        //2x, 2y      |  2x + 1, 2y
+        //2x, 2y + 1  |  2x + 1, 2y + 1
+
+        
+
+        //given a tile addresses, create the children addresses all the way down to maxTileDepth
+        function getChildAddresses(z,x,y){
+            var output = [];
+
+            //The 4 immediate subtiles
+            var s1,s2,s3,s4;
+            s1 = [(z + 1),(2*x),(2*y)];
+            s2 = [(z + 1),((2*x)+1),(2*y)];
+            s3 = [(z + 1),(2*x),((2*y)+1)];
+            s4 = [(z + 1),((2*x)+1),((2*y)+1)];
+
+            output.push(s1);
+            output.push(s2);
+            output.push(s3);
+            output.push(s4);
+
+            if(z == _maxTileDepth - 1){
+               //Last time thru
+              return output;
+            }
+            else{
+
+              d1 = getChildAddresses(s1[0], s1[1], s1[2]);
+              d1 = d1.concat(getChildAddresses(s2[0], s2[1], s2[2]));
+              d1 = d1.concat(getChildAddresses(s3[0], s3[1], s3[2]));
+              d1 = d1.concat(getChildAddresses(s4[0], s4[1], s4[2]));
+
+              return output.concat(d1);
+            }
+        }
+
+
+         //given a tile addresses, create the parent addresses all the way up to 0
+        function getParentAddresses(z,x,y){
+            var output = [];
+            var outputDict = {};
+            var dx = x;
+            var dy = y;
+
+            //Zoom out by halving (1/2) the x and y values (in the previous zoom level)
+            var p1;
+            if(isOdd(x) === true){
+                //if odd, then subtract 1
+                dx = x - 1;
+            }
+            if(isOdd(y) === true){
+                //if odd, then subtract 1
+                dy = y - 1;
+            }
+
+            //This tile's address
+            p1 = [(z - 1),(.5*dx),(.5*dy)];
+
+            //outputDict[z - 1 + "/" + .5*dx + "/" + .5*dy] = p1;
+
+            output.push(p1); 
+            
+
+            if(z == (_minTileDepth + 1)){
+               //Last time thru
+              return output;
+            }
+            else{
+
+              var u1 = getParentAddresses(p1[0], p1[1], p1[2]);
+
+              return output.concat(u1);
+            }
+        }
+
+
+
+        function getCurrentTileBounds(map_obj) {
+            var bounds = map_obj.getPixelBounds(),
+              tileSize = 256; //TODO
+
+            // tile coordinates range for the current view
+            var tileBounds = L.bounds(
+              bounds.min.divideBy(tileSize).floor(),
+              bounds.max.divideBy(tileSize).floor());
+
+            return tileBounds;
+        }
+
+
+        function getCSV(){
+
+          if(_addresses.length > 0){
+
+              var csvContent = "data:text/csv;charset=utf-8,";
+              _addresses.forEach(function(tileAddress, index){
+                  dataString = tileAddress.join("/");
+                  csvContent += index < _addresses.length ? dataString+ "\n" : dataString;
+              });
+
+              var encodedUri = encodeURI(csvContent);
+              window.open(encodedUri);
+
+          }
+        }
+
+
+
+
+
+        var SphericalMercator = function(){
+            var size = 256;
+            this.Bc = [];
+            this.Cc = [];
+            this.zc = [];
+            this.Ac = [];
+            this.DEG_TO_RAD = Math.PI / 180;
+            this.RAD_TO_DEG = 180 / Math.PI;
+            this.size = 256;
+            this.levels = 20;
+            //this.proj4 = proj4;
+            for (var d = 0; d < this.levels; d++) {
+                this.Bc.push(size / 360);
+                this.Cc.push(size / (2 * Math.PI));
+                this.zc.push(size / 2);
+                this.Ac.push(size);
+                size *= 2;
+            }
+            this.minmax = minmax;
+            this.px_to_ll = px_to_ll;
+            this.ll_to_px = ll_to_px;
+            this.xyz_to_envelope = xyz_to_envelope;
+        };
+
+        var minmax = function(a, b, c) {
+            return Math.min(Math.max(a, b), c);
+        };
+
+        var ll_to_px = function(ll, zoom) {
+            var d = this.zc[zoom];
+            var f = this.minmax(Math.sin(this.DEG_TO_RAD * ll[1]), -0.9999, 0.9999);
+            var x = Math.round(d + ll[0] * this.Bc[zoom]);
+            var y = Math.round(d + 0.5 * Math.log((1 + f) / (1 - f)) * (-this.Cc[zoom]));
+            return [x, y];
+        };
+
+        /**
+         * Convert screen pixel value to lat lon
+         *
+         * @param {Array} px [x y] array of geographic coordinates.
+         * @param {Number} zoom number of the zoom level.
+         */
+        var px_to_ll = function(px, zoom) {
+            var zoom_denom = this.zc[zoom];
+            var g = (px[1] - zoom_denom) / (-this.Cc[zoom]);
+            var lat = (px[0] - zoom_denom) / this.Bc[zoom];
+            var lon = this.RAD_TO_DEG * (2 * Math.atan(Math.exp(g)) - 0.5 * Math.PI);
+            return [lat, lon];
+        };
+
+        /**
+         * Convert tile xyz value to Mapnik envelope
+         *
+         * @param {Number} x latitude number.
+         * @param {Number} y longitude number.
+         * @param {Number} zoom zoom.
+         * @param {Boolean} tms_style whether to compute a tms tile.
+         * @param {Boolean} geographic: if true, return the bbox as WGS84
+         * @return Object Mapnik envelope.
+         */
+        var xyz_to_envelope = function(x, y, zoom, TMS_SCHEME, geographic) {
+            if (TMS_SCHEME) {
+                y = (Math.pow(2, zoom) - 1) - y;
+            }
+            var ll = [x * this.size, (y + 1) * this.size];
+            var ur = [(x + 1) * this.size, y * this.size];
+            var bbox;
+            if(geographic == true){
+                return this.px_to_ll(ll, zoom).concat(this.px_to_ll(ur, zoom))
+            }
+            // else{
+            //     return mercator.forward(this.px_to_ll(ll, zoom).concat(this.px_to_ll(ur, zoom)));
+            // }
+        };
+
+        var mercator = new SphericalMercator();
+
+        //Given a  z,x,y tile address, get the bounding box
+        var GetZXYBounds = function(z,x,y){
+
+            var tilebounds = mercator.xyz_to_envelope(parseInt(x), parseInt(y), parseInt(z), false, true);
+
+            var jsonBounds = { "type": "Polygon", "coordinates": [[
+              [tilebounds[0], tilebounds[1]],
+              [tilebounds[0], tilebounds[3]],
+              [tilebounds[2], tilebounds[3]],
+              [tilebounds[2], tilebounds[1]],
+              [tilebounds[0], tilebounds[1]]
+            ]]};
+
+            //Callback with either nothing, or the result row
+            return { bounds: jsonBounds };
+
+        };
+
+
+        ////Take in results object, return GeoJSON (if there is geometry)
+        var geoJSONFormatter = function (rows, geom_fields_array, geom_extent_array) {
+            //Take in results object, return GeoJSON
+            //Loop thru results
+            var featureCollection = { "type": "FeatureCollection", "features": [] };
+
+            rows.forEach(function (row) {
+
+                var feature = { "type": "Feature", "properties": {} };
+                //Depending on whether or not there are geometry properties, handle it.  If multiple geoms, use a GeometryCollection output for GeoJSON.
+
+                    if (row[geom_fields_array[0]]) {
+                        //feature.geometry = JSON.parse(row[geom_fields_array[0]]);
+                        feature.geometry = row[geom_fields_array[0]];
+
+                        //remove the geometry property from the row object so we're just left with non-spatial properties
+                        delete row[geom_fields_array[0]];
+                    }
+                
+
+                feature.properties = row;
+                featureCollection.features.push(feature);
+            })
+
+            return featureCollection;
+    }
+
+
+    function isEven(n) {
+      return n % 2 == 0;
+    }
+
+    function isOdd(n) {
+       return Math.abs(n % 2) == 1;
+    }
+
+    </script>
+</html>

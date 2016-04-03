@@ -1,0 +1,151 @@
+$def with ()
+<html xmlns="http://www.w3.org/1999/html">
+    <head lang="en">
+        <meta charset="UTF-8">
+        <meta content="IE=edge" http-equiv="X-UA-Compatible">
+        <meta content="width=device-width, initial-scale=1" name="viewport">
+        <title>Geocoding Postulation System</title>
+        <!-- CDN STUFF TO BE USED FOR DEPLOYMENT -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+        <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+        <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css" rel="stylesheet">
+        <link href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" rel="stylesheet">
+        <link href="static/buttonLoader.css" rel="stylesheet">
+        <script src="static/jquery-1.11.3.min.js"></script>
+        <script src="static/jquery.buttonLoader.js"></script>
+        <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+        <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+        <script src="static/geocoding.js"></script>
+        <style type="text/css">
+            #map {
+                position: relative;
+                height: 750px;
+                width: 100%;
+                margin-top: 20px;
+                margin-left: 5px;
+                margin-right: 5px;
+            }
+            #table-wrapper {
+              position:relative;
+            }
+            #table-scroll {
+              height:150px;
+              overflow:auto;  
+              margin-top:20px;
+            }
+            #table-wrapper table {
+              width:100%;
+                
+            }
+            .input-type-container {
+              padding: 20px
+              margin: auto;
+            }
+
+            input[type="radio"] {
+              display:none;
+            }
+
+            input[type="radio"] + span:before {
+              position: relative;
+              top: 1px;
+              display: inline-block;
+              font-family: 'Glyphicons Halflings';
+              font-style: normal;
+              font-weight: 400;
+              line-height: 1;
+              -webkit-font-smoothing: antialiased;
+              -moz-osx-font-smoothing: grayscale;
+            }
+
+
+            input[type="radio"] + span:before {
+              content: "\e165"; /* record */
+              color: #EF5350;
+              margin-right: 5px;
+            }
+
+            input[type="radio"]:checked + span:before {
+              content: "\e089"; /* ok-circle */
+              color: #2196F3;
+            }
+
+            .radio label {
+                padding-left: 0px;
+            }
+            .btn { float: right; }
+    </style>
+</head>
+ <h2 align="center">Geocoding Data Tests</h2> 
+<body>
+<table id="container" width="100%" border="0">
+    <tr>
+        <td>
+            <div class="input-type-container">
+              <div class="radio-group">
+                <div class="radio">
+                  <label>
+                    <input type="radio" name="radio" value="csv" checked>
+                      <span>CSV Data</span>
+                  </label>
+                </div>
+                <div class="radio">
+                  <label>
+                    <input type="radio" name="radio" value="postgres">
+                      <span>Postgres</span>
+                  </label>
+                </div>
+            </div>
+        </td>
+        <td>
+            <div id="csv-iput-details" style="display: none">
+                Path to CSVs: <input id="path-to-csv" type="text" name="Path to csv data" style="width: 500px">
+            </div>
+            <div id="postgres-iput-details" style="display: none">
+                Postgres Connection:<br>
+                Host: <input id="host" type="text" name="host" value="pgsqlgis-repos">
+                Database: <input id="database" type="text" name="database" value="pg_geocoding">
+                Username: <input id="user" type="text" name="username" value="read_only_user">
+                Password: <input id="password" type="text" name="password" value="read_only_user">
+                Staging Prefix: <input id="staging-prefix" type="text" name="staging-prefix" value="finland_admin2">
+            </div>
+        </td>
+    </tr>
+</table>
+<div id="table-wrapper">
+    <div id="table-scroll">
+        <table id="container" width="100%" border="1">
+            <tr>
+                <th width="100px" ALIGN="CENTER">
+                    Tests
+                </th>
+                <th ALIGN="CENTER">
+                    Test Results
+                </th>
+            </tr>
+            <tr>
+                <td class="test" ALIGN="CENTER" VALIGN="TOP">
+                    <button class="btn btn-danger has-spinner test-btn" id="testinvalidshape">Test Invalid Shape</button>
+                </td>
+                <td id="test-result-testinvalidshape" class="test-result">
+                </td>
+            </tr>
+            <tr>
+                <td class="test" ALIGN="CENTER" VALIGN="TOP">
+                    <button class="btn btn-danger has-spinner test-btn" id="testoverlappingpolygons">Test Overlapping Polygons</button>
+                </td>
+                <td id="test-result-testoverlappingpolygons" class="test-result">
+                </td>
+            </tr>
+            <tr>
+                <td class="test" ALIGN="CENTER" VALIGN="TOP">
+                    <button class="btn btn-danger has-spinner test-btn" id="testpointinpolygon">Test Point in Polygon</button>
+                </td>
+                <td id="test-result-testpointinpolygon" class="test-result">
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+<div class="col-md-12" id="map"></div>
+</body></html>
